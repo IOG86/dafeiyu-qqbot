@@ -1,0 +1,7 @@
+name: astrbot_plugin_persona_pack
+display_name: 人格包
+desc: 从 data/persona_pack/<pack>/ 读取人格包（persona / expression-dna / style-bank / boundaries）并注入系统提示词，改文件即改人格。
+help: 编辑 data/persona_pack/active.json 选择装载的包与文件
+version: v1.0.0
+author: liqingguo
+repo: local

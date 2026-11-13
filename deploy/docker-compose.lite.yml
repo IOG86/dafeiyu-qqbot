@@ -1,0 +1,66 @@
+name: qqbot
+
+# 轻量化版：适配 2 vCPU / 1.6 GiB 可用内存的阿里云 ECS
+# 所有端口只绑 127.0.0.1，只能通过 SSH 隧道访问
+
+services:
+  astrbot:
+    image: soulter/astrbot:latest
+    container_name: astrbot
+    restart: unless-stopped
+    mem_limit: 450m
+    memswap_limit: 700m
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "127.0.0.1:6185:6185"   # WebUI
+      - "127.0.0.1:6199:6199"   # OneBot v11 反向 WS
+    volumes:
+      - ./astrbot/data:/AstrBot/data
+      - /etc/localtime:/etc/localtime:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+  snowluma:
+    image: motricseven7/snowluma:latest
+    container_name: snowluma
+    restart: unless-stopped
+    mem_limit: 900m
+    memswap_limit: 1400m
+    # 轻量化：512M /dev/shm（默认 64M 会让 Chromium 白屏），1024x640@16bit 虚拟屏
+    shm_size: 512m
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    environment:
+      - TZ=Asia/Shanghai
+      - VNC_PASSWD=${VNC_PASSWD}
+      - SNOWLUMA_WEBUI_BOOTSTRAP_PASSWORD=${WEBUI_PASS}
+      - SNOWLUMA_WEBUI_HOST=0.0.0.0
+      - SNOWLUMA_WEBUI_PORT=5099
+      - SNOWLUMA_LOG_LEVEL=error
+      - SNOWLUMA_SCREEN=1024x640x16
+      - SNOWLUMA_HOOK_AUTOLOAD=1
+      - SNOWLUMA_QQ_FLAGS=--disable-gpu --disable-software-rasterizer --disable-gpu-compositing --disk-cache-size=1048576
+      - SNOWLUMA_ACCEPT_EULA=1
+      - SNOWLUMA_ACCEPT_PRIVACY=1
+    ports:
+      - "127.0.0.1:6081:6081"   # noVNC
+      - "127.0.0.1:5099:5099"   # SnowLuma WebUI
+    volumes:
+      - ./snowluma/data:/app/data
+      - ./snowluma/config:/app/.config
+      - ./snowluma/local:/app/.local/share
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"

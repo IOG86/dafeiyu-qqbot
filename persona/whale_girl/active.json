@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "pack": "whale_girl",
+  "base_dir": "/AstrBot/data/persona_pack",
+  "include": ["expression-dna.md", "boundaries.md"],
+  "style_samples": 6,
+  "max_chars": 6000
+}

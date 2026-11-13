@@ -1,0 +1,72 @@
+name: qqbot
+
+# AstrBot + SnowLuma (QQ bot stack) for Alibaba Cloud ECS 203.0.113.10
+# All host ports are bound to 127.0.0.1 — reachable ONLY through an SSH tunnel.
+# Only TCP/22 is open in the cloud security group.
+
+services:
+  astrbot:
+    image: soulter/astrbot:latest
+    container_name: astrbot
+    restart: unless-stopped
+    # 内存上限：异常膨胀时只杀容器，不会拖死整台机器
+    mem_limit: 600m
+    memswap_limit: 900m
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "127.0.0.1:6185:6185"   # WebUI / dashboard
+      - "127.0.0.1:6199:6199"   # OneBot v11 reverse WebSocket server
+    volumes:
+      - ./astrbot/data:/AstrBot/data
+      - /etc/localtime:/etc/localtime:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  snowluma:
+    image: motricseven7/snowluma:latest
+    container_name: snowluma
+    restart: unless-stopped
+    # 内存上限：QQ 异常膨胀时由容器内 OOM 收拾，保护宿主机 SSH
+    mem_limit: 1100m
+    memswap_limit: 1800m
+    # Linux QQ is Chromium-based: 64 MB default /dev/shm makes it crash/white-screen
+    shm_size: 1gb
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
+    # ptrace hook injection into QQ is mandatory for this image
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    environment:
+      - TZ=Asia/Shanghai
+      - VNC_PASSWD=${VNC_PASSWD}          # noVNC / remote desktop password (8 chars max)
+      - SNOWLUMA_WEBUI_BOOTSTRAP_PASSWORD=${WEBUI_PASS}   # deterministic WebUI password (seeds webui.json)
+      - SNOWLUMA_WEBUI_HOST=0.0.0.0
+      - SNOWLUMA_WEBUI_PORT=5099
+      - SNOWLUMA_LOG_LEVEL=warn           # keeps the low-IOPS cloud disk alive
+      - SNOWLUMA_SCREEN=1280x720x24       # smaller Xvfb = less CPU/I/O
+      - SNOWLUMA_HOOK_AUTOLOAD=1
+      - SNOWLUMA_QQ_FLAGS=--disable-gpu --disable-software-rasterizer --disable-gpu-compositing --disk-cache-size=1048576 --disable-gpu-shader-disk-cache
+      - SNOWLUMA_ACCEPT_EULA=1
+      - SNOWLUMA_ACCEPT_PRIVACY=1
+    ports:
+      - "127.0.0.1:6081:6081"   # noVNC remote desktop
+      - "127.0.0.1:5099:5099"   # SnowLuma WebUI
+    volumes:
+      - ./snowluma/data:/app/data
+      - ./snowluma/config:/app/.config
+      - ./snowluma/local:/app/.local/share
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"

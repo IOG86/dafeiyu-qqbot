@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大肥鱼控制台</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e222b; --line:#2a2f3a;
+    --text:#e6e9ef; --dim:#9aa3b2; --accent:#4f9dff; --ok:#35c07a;
+    --warn:#f5a524; --bad:#ef5350;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  header{display:flex;align-items:center;gap:12px;padding:14px 22px;
+    border-bottom:1px solid var(--line);background:#12151b;position:sticky;top:0;z-index:9}
+  header h1{font-size:17px;margin:0;font-weight:600}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--dim);display:inline-block}
+  .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .dot.off{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+  .spacer{flex:1}
+  .muted{color:var(--dim)}
+  main{padding:18px 22px 60px;max-width:1280px;margin:0 auto;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card h2{margin:0 0 12px;font-size:14px;font-weight:600;color:var(--text);
+    display:flex;align-items:center;gap:8px}
+  .card h2 .tag{font-size:11px;padding:1px 7px;border-radius:20px;background:var(--card2);
+    color:var(--dim);font-weight:400}
+  .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #232833}
+  .row:last-child{border-bottom:none}
+  .k{color:var(--dim)}
+  .v{font-weight:600}
+  .v.ok{color:var(--ok)} .v.bad{color:var(--bad)} .v.warn{color:var(--warn)}
+  .big{font-size:26px;font-weight:700;letter-spacing:.5px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:8px;
+    padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+  button:hover{filter:brightness(1.1)}
+  button.ghost{background:var(--card2);color:var(--text);border:1px solid var(--line)}
+  button.danger{background:#7a2a2a}
+  button:disabled{opacity:.5;cursor:default}
+  input,select,textarea{background:#10131a;border:1px solid var(--line);color:var(--text);
+    border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .sticker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;margin-top:10px}
+  .sticker{position:relative;background:var(--card2);border:1px solid var(--line);
+    border-radius:8px;overflow:hidden;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+  .sticker img{max-width:100%;max-height:100%;object-fit:contain}
+  .sticker .del{position:absolute;top:2px;right:2px;background:#000a;border:0;color:#fff;
+    border-radius:50%;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer;padding:0}
+  .sticker .nm{position:absolute;bottom:0;left:0;right:0;background:#000b;font-size:9px;
+    padding:1px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:6px 4px;border-bottom:1px solid #232833}
+  th{color:var(--dim);font-weight:500;font-size:12px}
+  .rule-row input{width:100%}
+  .rule-row select{width:100%}
+  .chat-box{height:260px;overflow:auto;background:#10131a;border:1px solid var(--line);
+    border-radius:8px;padding:10px;margin-bottom:10px}
+  .msg{margin-bottom:8px;display:flex;gap:8px}
+  .msg .who{color:var(--dim);min-width:44px;font-size:12px;padding-top:2px}
+  .msg .txt{background:var(--card2);padding:6px 10px;border-radius:8px;max-width:85%;
+    white-space:pre-wrap;word-break:break-word}
+  .msg.me .txt{background:#1d3a5f}
+  pre.logs{background:#0c0f14;border:1px solid var(--line);border-radius:8px;
+    padding:10px;height:220px;overflow:auto;font-size:11.5px;color:#b9c2d0;white-space:pre-wrap}
+  .inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .switch{position:relative;width:42px;height:22px;background:#333a46;border-radius:22px;
+    cursor:pointer;transition:.2s;flex:0 0 auto}
+  .switch.on{background:var(--ok)}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;
+    background:#fff;border-radius:50%;transition:.2s}
+  .switch.on::after{left:23px}
+  .hint{font-size:12px;color:var(--dim);margin-top:8px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:#222936;border:1px solid var(--line);padding:10px 18px;border-radius:10px;
+    opacity:0;transition:.25s;z-index:99;font-size:13px}
+  .toast.show{opacity:1}
+  a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>🐟 大肥鱼控制台</h1>
+  <span class="dot" id="healthDot"></span>
+  <span class="muted" id="healthText">连接中…</span>
+  <span class="spacer"></span>
+  <a href="http://127.0.0.1:6185" target="_blank" class="muted">AstrBot 面板 ↗</a>
+  <a href="http://127.0.0.1:5099" target="_blank" class="muted">SnowLuma ↗</a>
+  <a href="http://127.0.0.1:6081" target="_blank" class="muted">noVNC ↗</a>
+</header>
+
+<main>
+  <!-- 状态 -->
+  <section class="card">
+    <h2>运行状态 <span class="tag" id="tsTag">—</span>
+      <span class="spacer"></span>
+      <button class="ghost" onclick="loadOverview(true)">刷新</button>
+    </h2>
+    <div class="row"><span class="k">QQ</span><span class="v" id="qqState">—</span></div>
+    <div class="row"><span class="k">账号</span><span class="v" id="qqAccount">—</span></div>
+    <div class="row"><span class="k">容器</span><span class="v" id="containers">—</span></div>
+    <div class="row"><span class="k">内存</span><span class="v" id="mem">—</span></div>
+    <div class="row"><span class="k">I/O 压力</span><span class="v" id="io">—</span></div>
+    <div class="row"><span class="k">磁盘</span><span class="v" id="disk">—</span></div>
+    <div class="row"><span class="k">运行时长</span><span class="v" id="uptime">—</span></div>
+    <div class="row"><span class="k">已加载插件</span><span class="v" id="plugins">—</span></div>
+    <div class="row"><span class="k">识图（看懂表情包）</span><span class="v" id="vision">—</span></div>
+    <div class="actions">
+      <button class="ghost" onclick="restart('astrbot')">重启 AstrBot</button>
+      <button class="ghost" onclick="restart('snowluma')">重启 QQ</button>
+      <button class="danger" onclick="restart('all')">全部重启</button>
+    </div>
+  </section>
+
+  <!-- 余额 -->
+  <section class="card">
+    <h2>DeepSeek 余额 <span class="tag">实时</span>
+      <span class="spacer"></span>
+      <button class="ghost" onclick="loadBalance()">刷新</button>
+    </h2>
+    <div class="row"><span class="k">可用状态</span><span class="v" id="balAvail">—</span></div>
+    <div class="row"><span class="k">总余额</span><span class="v big" id="balTotal">—</span></div>
+    <div class="row"><span class="k">充值余额</span><span class="v" id="balTopped">—</span></div>
+    <div class="row"><span class="k">赠送余额</span><span class="v" id="balGranted">—</span></div>
+    <div class="hint" id="balHint">余额低于 5 元时这里会变红提醒。</div>
+  </section>
+
+  <!-- QQ Cookie -->
+  <section class="card">
+    <h2>QQ Cookie <span class="tag">OneBot get_cookies</span>
+      <span class="spacer"></span>
+      <button class="ghost" onclick="loadCookie()">获取最新</button>
+    </h2>
+    <div class="row"><span class="k">状态</span><span class="v" id="ckState">—</span></div>
+    <div class="row"><span class="k">csrf_token</span><span class="v" id="ckCsrf">—</span></div>
+    <div class="row"><span class="k">字段数</span><span class="v" id="ckCount">—</span></div>
+    <textarea id="ckText" readonly rows="5" style="width:100%;margin-top:8px;font-size:11px"
+      placeholder="点右上角「获取最新」"></textarea>
+    <div class="actions">
+      <button onclick="copyCookie()">复制 Cookie</button>
+      <span class="muted" style="align-self:center">Cookie 会过期，用前重新获取</span>
+    </div>
+    <div class="hint">用于需要 QQ Cookie 的功能（如空间/说说类插件）。</div>
+  </section>
+
+  <!-- 表情包 -->
+  <section class="card">
+    <h2>表情包 <span class="tag">发表情</span>
+      <span class="spacer"></span>
+      <label class="inline" style="cursor:pointer">
+        <span class="muted" id="enabledLabel">启用</span>
+        <span class="switch" id="enabledSwitch" onclick="toggleEnabled()"></span>
+      </label>
+    </h2>
+    <div class="inline">
+      <span class="muted">发表情方式</span>
+      <select id="modeSel" onchange="onModeChange()">
+        <option value="auto">模型自主判断（推荐）</option>
+        <option value="rules">关键词规则</option>
+        <option value="off">不发表情</option>
+      </select>
+      <span class="muted">每条最多</span>
+      <input type="number" id="maxPerReply" min="1" max="3" value="1" style="width:56px"
+             onchange="saveRules(true)">
+      <span class="muted">张</span>
+    </div>
+    <div class="hint" id="autoHint">模型会拿到全部表情包的名字（名字即含义），自己判断什么时候该发哪张。</div>
+    <div class="inline" style="margin-top:10px">
+      <input type="file" id="fileInput" accept="image/*" multiple>
+      <button onclick="uploadStickers()">上传表情包</button>
+    </div>
+    <div class="sticker-grid" id="stickerGrid"></div>
+    <div class="hint">点右上角 × 删除。表情包需在服务器上，通过 SSH 上传。</div>
+  </section>
+
+  <!-- 关键词规则 -->
+  <section class="card">
+    <h2>关键词 → 表情 <span class="tag">仅关键词模式</span>
+      <span class="spacer"></span>
+      <button onclick="saveRules()">保存规则</button>
+    </h2>
+    <table>
+      <thead><tr><th style="width:38%">关键词（消息包含即触发）</th><th>表情包</th><th style="width:48px"></th></tr></thead>
+      <tbody id="rulesBody"></tbody>
+    </table>
+    <div class="actions"><button class="ghost" onclick="addRule()">＋ 添加规则</button></div>
+    <div class="hint">规则对私聊和群聊都生效；命中后表情会附在机器人回复后面。</div>
+
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+      <div class="inline">
+        <span class="muted">规则测试</span>
+        <input id="testText" placeholder="输入一句话，看会命中哪条规则" style="flex:1"
+               onkeydown="if(event.key==='Enter')testRule()">
+        <button class="ghost" onclick="testRule()">测试</button>
+      </div>
+      <div class="hint" id="testResult">输入一句话可预演匹配结果（不会真的发消息）。</div>
+    </div>
+  </section>
+
+  <!-- 聊天测试 -->
+  <section class="card">
+    <h2>聊天测试 <span class="tag">走 AstrBot</span></h2>
+    <div class="chat-box" id="chatBox">
+      <div class="msg"><span class="who">提示</span><span class="txt">在这里发消息等于和机器人对话（webchat，不占用 QQ）。需要隧道在线。</span></div>
+    </div>
+    <div class="inline">
+      <input id="chatInput" placeholder="输入消息，回车发送" style="flex:1"
+             onkeydown="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()" id="sendBtn">发送</button>
+    </div>
+  </section>
+
+  <!-- 日志 -->
+  <section class="card">
+    <h2>AstrBot 日志 <span class="tag">最近 120 行</span>
+      <span class="spacer"></span>
+      <button class="ghost" onclick="loadLogs()">刷新</button>
+    </h2>
+    <pre class="logs" id="logs">点击刷新加载…</pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let state = { rules: { enabled: true, random_probability: 0.15, rules: [] }, stickers: [] };
+
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+async function api(path, opts){
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+/* ---------- 状态 ---------- */
+async function loadOverview(force){
+  try{
+    const d = await api('/api/overview');
+    if(!d.ok){ $('healthDot').className='dot off'; $('healthText').textContent = d.error || '连不上服务器'; return; }
+    $('healthDot').className = 'dot on';
+    $('healthText').textContent = '服务器在线';
+    $('tsTag').textContent = new Date().toLocaleTimeString();
+    $('qqState').textContent = d.qq?.online ? '在线' : '离线';
+    $('qqState').className = 'v ' + (d.qq?.online ? 'ok' : 'bad');
+    $('qqAccount').textContent = (d.qq?.nickname || '—') + (d.qq?.user_id ? ` (${d.qq.user_id})` : '');
+    $('containers').textContent = (d.containers||[]).map(c=>`${c.name}: ${c.status.includes('Up')?'运行':'停止'}`).join(' / ') || '—';
+    const m = d.memory||{};
+    $('mem').textContent = m.total_mb ? `${m.used_mb} / ${m.total_mb} MB` : '—';
+    $('mem').className = 'v ' + (m.available_mb < 120 ? 'bad' : m.available_mb < 250 ? 'warn' : 'ok');
+    $('io').textContent = (d.io_full_avg10 ?? 0).toFixed(1) + '%';
+    $('io').className = 'v ' + (d.io_full_avg10 > 50 ? 'bad' : d.io_full_avg10 > 20 ? 'warn' : 'ok');
+    $('disk').textContent = d.disk?.total_gb ? `${(d.disk.total_gb-d.disk.free_gb).toFixed(1)} / ${d.disk.total_gb} GB` : '—';
+    $('uptime').textContent = d.uptime_hours ? d.uptime_hours + ' 小时' : '—';
+    const pl = (d.plugins||[]).filter(p=>p.activated);
+    $('plugins').textContent = pl.length + ' 个' + (pl.length ? ' · ' + pl.filter(p=>p.name.includes('companion')||p.name.includes('outputpro')||p.name.includes('dafeiyu')).map(p=>p.name.replace('astrbot_plugin_','')).join(', ') : '');
+    const v = d.vision || {};
+    $('vision').textContent = v.ready ? ('已配置 · ' + v.caption_provider_id) : '未配置（DeepSeek 看不了图，需加视觉模型）';
+    $('vision').className = 'v ' + (v.ready ? 'ok' : 'warn');
+  }catch(e){
+    $('healthDot').className='dot off'; $('healthText').textContent = '请求失败';
+  }
+}
+
+/* ---------- 余额 ---------- */
+async function loadBalance(){
+  $('balTotal').textContent = '…';
+  const d = await api('/api/balance');
+  if(!d.ok){ $('balTotal').textContent='—'; $('balHint').textContent = d.error || '获取失败'; return; }
+  const cur = d.currency === 'CNY' ? '¥' : (d.currency||'');
+  $('balAvail').textContent = d.available ? '可用' : '不可用';
+  $('balAvail').className = 'v ' + (d.available ? 'ok' : 'bad');
+  $('balTotal').textContent = cur + ' ' + d.total;
+  $('balTotal').className = 'v big ' + (parseFloat(d.total) < 5 ? 'bad' : 'ok');
+  $('balTopped').textContent = cur + ' ' + d.topped_up;
+  $('balGranted').textContent = cur + ' ' + d.granted;
+  $('balHint').textContent = parseFloat(d.total) < 5
+    ? '⚠️ 余额不足 5 元，建议尽快充值，否则机器人会停止回复。'
+    : '余额充足。DeepSeek 只有余额接口，没有历史用量接口（充值记录看官网）。';
+}
+
+/* ---------- QQ Cookie ---------- */
+async function loadCookie(){
+  $('ckState').textContent = '获取中…';
+  $('ckState').className = 'v';
+  const d = await api('/api/qq_cookie');
+  if(!d.ok){
+    $('ckState').textContent = d.error || '获取失败';
+    $('ckState').className = 'v bad';
+    $('ckText').value = '';
+    return;
+  }
+  $('ckState').textContent = '已获取';
+  $('ckState').className = 'v ok';
+  $('ckCsrf').textContent = d.csrf_token || '—';
+  $('ckCount').textContent = d.cookie_count ?? '—';
+  $('ckText').value = d.cookies || '';
+}
+async function copyCookie(){
+  const t = $('ckText').value;
+  if(!t){ toast('先点「获取最新」'); return; }
+  try { await navigator.clipboard.writeText(t); toast('已复制 Cookie'); }
+  catch(e){ $('ckText').select(); document.execCommand('copy'); toast('已复制 Cookie'); }
+}
+
+/* ---------- 表情包 ---------- */
+async function loadStickers(){
+  const d = await api('/api/stickers');
+  if(!d.ok){ toast(d.error||'读取表情包失败'); return; }
+  state.rules = d.rules;
+  state.stickers = d.stickers || [];
+  renderEnabled(); renderGrid(); renderRules();
+}
+function renderEnabled(){
+  $('enabledSwitch').className = 'switch' + (state.rules.enabled ? ' on' : '');
+  const mode = state.rules.mode || 'auto';
+  $('modeSel').value = mode;
+  $('maxPerReply').value = state.rules.max_per_reply || 1;
+  $('autoHint').textContent = mode === 'auto'
+    ? '模型会拿到全部表情包的名字（名字即含义），自己判断什么时候该发哪张。'
+    : mode === 'rules'
+      ? '按下面的关键词规则发表情；模型不会自己发。'
+      : '已关闭发表情。';
+}
+function toggleEnabled(){
+  state.rules.enabled = !state.rules.enabled;
+  renderEnabled(); saveRules(true);
+}
+function onModeChange(){ renderEnabled(); saveRules(true); }
+function renderGrid(){
+  const g = $('stickerGrid'); g.innerHTML = '';
+  if(!state.stickers.length){ g.innerHTML = '<div class="muted">还没有表情包，先上传几张吧</div>'; return; }
+  for(const s of state.stickers){
+    const div = document.createElement('div'); div.className = 'sticker';
+    div.innerHTML = `<img src="/cache/stickers/${encodeURIComponent(s.name)}" alt="">
+      <button class="del" title="删除" onclick="delSticker('${s.name.replace(/'/g,"\\'")}')">×</button>
+      <div class="nm">${s.name}</div>`;
+    g.appendChild(div);
+  }
+}
+function renderRules(){
+  const tb = $('rulesBody'); tb.innerHTML = '';
+  const opts = state.stickers.map(s=>`<option value="${s.name}">${s.name}</option>`).join('');
+  state.rules.rules.forEach((r,i)=>{
+    const tr = document.createElement('tr'); tr.className='rule-row';
+    tr.innerHTML = `<td><input value="${(r.keyword||'').replace(/"/g,'&quot;')}"
+        oninput="state.rules.rules[${i}].keyword=this.value"></td>
+      <td><select onchange="state.rules.rules[${i}].sticker=this.value">
+        ${opts || '<option value="">（先上传表情包）</option>'}
+      </select></td>
+      <td><button class="ghost" onclick="removeRule(${i})">删</button></td>`;
+    tb.appendChild(tr);
+    const sel = tr.querySelector('select');
+    if(sel && r.sticker) sel.value = r.sticker;
+  });
+  if(!state.rules.rules.length){
+    tb.innerHTML = '<tr><td colspan="3" class="muted">还没有规则，点下面「添加规则」</td></tr>';
+  }
+}
+function addRule(){
+  state.rules.rules.push({ keyword: '', sticker: state.stickers[0]?.name || '' });
+  renderRules();
+}
+function removeRule(i){ state.rules.rules.splice(i,1); renderRules(); }
+
+async function saveRules(silent){
+  const payload = {
+    enabled: state.rules.enabled,
+    mode: $('modeSel').value,
+    max_per_reply: parseInt($('maxPerReply').value || '1', 10),
+    random_probability: 0,
+    rules: state.rules.rules.filter(r=> (r.keyword||'').trim() && r.sticker)
+  };
+  const d = await api('/api/rules', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ rules: payload }) });
+  if(d.ok){ if(!silent) toast('规则已保存'); state.rules = payload; renderEnabled(); }
+  else toast('保存失败: ' + (d.error||''));
+}
+
+async function uploadStickers(){
+  const files = $('fileInput').files;
+  if(!files.length){ toast('先选择图片'); return; }
+  for(const f of files){
+    const b64 = await new Promise(res=>{
+      const fr = new FileReader();
+      fr.onload = ()=> res(String(fr.result).split(',')[1]);
+      fr.readAsDataURL(f);
+    });
+    const d = await api('/api/upload', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name: f.name, data_b64: b64 }) });
+    if(!d.ok) toast(`上传 ${f.name} 失败: ${d.error||''}`);
+  }
+  $('fileInput').value = '';
+  toast('上传完成');
+  await loadStickers();
+}
+
+async function delSticker(name){
+  if(!confirm('删除表情包 ' + name + ' ?')) return;
+  const d = await api('/api/delete_sticker', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name }) });
+  if(d.ok){ toast('已删除'); await loadStickers(); } else toast('删除失败');
+}
+
+async function testRule(){
+  const text = $('testText').value.trim();
+  if(!text){ toast('先输入一句话'); return; }
+  $('testResult').textContent = '测试中…';
+  const d = await api('/api/test_rule', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ text }) });
+  if(!d.ok){ $('testResult').textContent = '失败: ' + (d.error||''); return; }
+  if(!d.enabled){ $('testResult').textContent = '⚠️ 表情功能当前是关闭状态（先打开上面的开关）'; return; }
+  if(d.hits && d.hits.length){
+    $('testResult').textContent = '✅ 命中 ' + d.hits.map(h=>`「${h.keyword}」→ ${h.sticker}`).join('；');
+  } else {
+    $('testResult').textContent = `没有命中关键词；会按随机概率 ${Math.round((d.random_probability||0)*100)}% 决定是否发随机表情`;
+  }
+}
+
+/* ---------- 聊天 ---------- */
+async function sendChat(){
+  const inp = $('chatInput'); const msg = inp.value.trim();
+  if(!msg) return;
+  inp.value = ''; $('sendBtn').disabled = true;
+  addMsg('我', msg, 'me');
+  const box = $('chatBox');
+  const wait = document.createElement('div');
+  wait.className='msg'; wait.innerHTML='<span class="who">大肥鱼</span><span class="txt">思考中…</span>';
+  box.appendChild(wait); box.scrollTop = box.scrollHeight;
+  const d = await api('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ message: msg }) });
+  wait.remove();
+  addMsg('大肥鱼', d.ok ? d.reply : ('出错: ' + (d.error||'')), '');
+  $('sendBtn').disabled = false; inp.focus();
+}
+function addMsg(who, text, cls){
+  const box = $('chatBox');
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  div.innerHTML = `<span class="who">${who}</span><span class="txt"></span>`;
+  div.querySelector('.txt').textContent = text;
+  box.appendChild(div); box.scrollTop = box.scrollHeight;
+}
+
+/* ---------- 其它 ---------- */
+async function restart(target){
+  if(!confirm('确定重启 ' + target + ' ?')) return;
+  toast('重启中…');
+  const d = await api('/api/restart', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ target }) });
+  toast(d.ok ? '已重启' : ('失败: ' + (d.error||'')));
+  setTimeout(()=>loadOverview(true), 6000);
+}
+async function loadLogs(){
+  $('logs').textContent = '加载中…';
+  const d = await api('/api/logs');
+  $('logs').textContent = d.ok ? d.logs : ('读取失败: ' + (d.error||''));
+}
+
+(async function init(){
+  await loadOverview(true);
+  loadBalance();
+  await loadStickers();
+  loadLogs();
+  setInterval(()=>loadOverview(true), 15000);
+})();
+</script>
+</body>
+</html>
